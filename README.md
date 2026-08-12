@@ -1,5 +1,7 @@
 # Movie Analysis and Prediction Project
 
+> **Scope** · Self-study data science project — published as-is.
+
 ## Overview
 This project analyzes the TMDB 5000 Movie Dataset to explore relationships between movie features and ratings, and builds predictive models for both movie ratings (regression) and rating classifications (classification). The analysis provides insights into what factors contribute to successful movies and demonstrates various data science techniques from data cleaning to model deployment.
 
