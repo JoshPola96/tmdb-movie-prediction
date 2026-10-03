@@ -1,0 +1,18 @@
+# pyproject.toml
+[project]
+name = "tmdb-movie-prediction"
+version = "2.0.0"
+description = "Predict a film's TMDB rating before release: a leakage-free tutorial comparing twelve model families."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11",
+    "numpy>=2.5",
+    "pandas>=3.0",
+    "scikit-learn>=1.9",
+    "skops>=0.16",
+]
+
+[dependency-groups]
+dev = ["ipykernel>=7.4"]

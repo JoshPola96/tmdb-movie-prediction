@@ -1,101 +1,92 @@
-# Movie Analysis and Prediction Project
+<!-- README.md -->
+# Predicting a film's rating before release
 
-> **Scope** · Coursework from my Data Science & ML internship at Irohub Infotech (2024–25), published here afterwards. Not maintained since.
+> **Scope** · Coursework from my Data Science & ML internship at Irohub Infotech (2024–25). Built quickly and published on GitHub on 2025-04-20, it was not revisited until this audit and rebuild as a tutorial in October 2026.
 
-> [!NOTE]
-> **Built 2025. The ecosystem has moved since.**
-> Dependencies here are unpinned, so a clean `pip install` today resolves to
-> versions that did not exist when this was written and pandas 3.0, numpy 2.5, pytest 9 and black 26 have all landed since. Expect install or
-> runtime breakage on a fresh environment. What is on offer is the engineering
-> approach and the decisions behind it, not a guaranteed-green build.
-> Happy to bring it current if that would be useful — just ask.
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/JoshPola96/tmdb-movie-prediction/blob/main/tmdb_movies_analysis_prediction.ipynb)
+Can a film's audience rating be predicted from what is known before release: budget, runtime, genres, language, release date, director and lead actor? This repository is one tutorial notebook that answers the question on the TMDB 5000 dataset without leakage, compares twelve model families fairly, and reports the result with its uncertainty.
 
-## Overview
-This project analyzes the TMDB 5000 Movie Dataset to explore relationships between movie features and ratings, and builds predictive models for both movie ratings (regression) and rating classifications (classification). The analysis provides insights into what factors contribute to successful movies and demonstrates various data science techniques from data cleaning to model deployment.
+## What it teaches
 
-## Dataset
-The project uses two datasets from TMDB (The Movie Database):
-- `tmdb_5000_credits.csv`: Contains information about movie credits including cast and crew
-- `tmdb_5000_movies.csv`: Contains movie metadata such as budget, genres, popularity, and ratings
-
-## Features
-- Data cleaning and preprocessing
-- Feature engineering including weighted rating calculation
-- Exploratory data analysis with visualizations
-- Correlation analysis between movie features
-- Genre-based popularity analysis
-- Machine learning models for regression and classification
-
-## Techniques Used
-
-### Data Preprocessing
-- Merging datasets
-- Handling missing values
-- JSON parsing using the `ast` module
-- Feature extraction from nested data structures
-- Data transformation for modeling
-
-### Exploratory Data Analysis
-- Visualization using Matplotlib and Seaborn
-- Pair plots for feature relationships
-- Bar charts for genre popularity
-- Correlation heatmaps
-- Distribution analysis of movie features
-
-### Feature Engineering
-- Creation of weighted rating system considering both vote count and average
-- Classification of movies into rating categories (High, Average, Low)
-- Genre extraction and one-hot encoding
-
-### Machine Learning
-- Regression models to predict movie ratings
-- Classification models to predict rating categories
-- Pipeline construction with preprocessing steps
-- Model evaluation and comparison
-- Hyperparameter tuning with GridSearchCV
-
-## Models Implemented
-
-### Regression Models
-- Linear Regression
-- Ridge Regression
-- Lasso Regression
-- Polynomial Regression
-- Decision Tree Regressor
-- Random Forest Regressor
-- Gradient Boosting Regressor
-- K-Neighbors Regressor
-- Support Vector Regression (SVR)
-
-### Classification Models
-- Logistic Regression
-- K-Nearest Neighbors Classifier
-- Decision Tree Classifier
-- Random Forest Classifier
-- Support Vector Machine (SVM)
+| Section | Concept |
+|---|---|
+| 4 | The prediction moment: deciding which columns a model may see (target leakage) |
+| 5 | Sentinel values and unit errors in real data |
+| 6 | Shrinkage: the Bayesian average as a ranking tool, not a prediction target |
+| 7 | Splitting by time; survivorship bias in a "top 5,000" dataset |
+| 8 | One leak-free preprocessing pipeline: multi-hot genres, cross-fitted target encoding |
+| 9–10 | Forward-chaining cross-validation across twelve model families; the one-standard-error rule |
+| 11 | Testing once, with bootstrap confidence intervals; diagnosing concept drift |
+| 12 | Rating bands: rounding a regression versus a direct classifier; macro-F1 |
+| 13 | Permutation importance, and what a negative importance means |
+| 14 | Saving a model with skops instead of pickle |
+| 15 | The first version's mistakes, each with the check that catches it |
 
 ## Results
-The project evaluates each model based on appropriate metrics:
-- Regression models: Mean Squared Error (MSE)
-- Classification models: Accuracy Score
 
-Visualizations of actual vs. predicted values provide insights into model performance. The best performing models and their optimal parameters are documented for future reference.
+The test set is the 567 films released from 2013 onwards with at least 50 votes. It was scored once, after every modelling choice had been made on earlier films.
 
-## Installation and Usage
-```python
-# Clone the repository
-git clone https://github.com/yourusername/movie-analysis-project.git
+| Model | Test MAE (rating points, 0–10 scale) | 95% CI |
+|---|---|---|
+| Linear regression on pre-release features | 0.619 | 0.580–0.659 |
+| Baseline: predict the training mean | 0.703 | |
 
-# Install dependencies
-pip install pandas numpy matplotlib seaborn scikit-learn
+- The model beats the baseline by 0.084 points (95% CI 0.054–0.115): a real but modest gain.
+- Cross-validation on earlier films estimated 0.530. The gap is **concept drift**: the correlation between budget and rating was −0.21 before 2013 and +0.17 after.
+- Predictions spread much less than real ratings (standard deviation 0.39 against 0.87). Runtime and genre carry most of the signal; the model captures broad tendencies and cannot pick out an outstanding film.
+- SVR had the best tuned cross-validation score (0.517), but within one standard error of plain linear regression, so the simpler model was chosen. Director and lead actor improved cross-validation by less than its noise and were left out by the same rule.
+- Low / Mid / High rating bands: macro-F1 0.482 against 0.333 for chance. A direct logistic classifier beat rounding the regression's predictions into bands.
 
-# Run the notebook
-jupyter notebook movie_analysis.ipynb
+## Corrections to the first version
+
+The first version reported near-perfect scores. Each one was an artifact:
+
+| Reported | Cause | Now |
+|---|---|---|
+| Regression MSE 0.0001 | The target was the weighted rating, and its own inputs (`vote_average`, `vote_count`) were features | Pre-release features only: MAE 0.619 |
+| Classification accuracy 1.0000 | The label `rating_class` was one of the features | Macro-F1 0.482 on later films |
+| Both | Genres were exploded into rows before a random split, so 86% of test rows were films also in training | One row per film; split by release date |
+| Model ranking | Nine regressors and five classifiers were tuned and ranked on the test set | Compared on training folds; tested once |
+
+Section 15 of the notebook lists every mistake with the check that catches it.
+
+## Run it
+
+**In the browser:** use the Colab badge above. The notebook installs what Colab lacks and reads the data from this repository.
+
+**Locally**, with [uv](https://docs.astral.sh/uv/):
+
+```bash
+git clone https://github.com/JoshPola96/tmdb-movie-prediction.git
+cd tmdb-movie-prediction
+uv sync
 ```
 
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
+Open `tmdb_movies_analysis_prediction.ipynb` in VS Code, select the `.venv` kernel and run all cells; or run `uv run --with jupyterlab jupyter lab`. Versions are pinned in `uv.lock`.
 
-## Acknowledgments
-- The Movie Database (TMDB) for providing the dataset
-- All open-source libraries used in this project
+## Repository contents
+
+| Path | What it is |
+|---|---|
+| `tmdb_movies_analysis_prediction.ipynb` | The tutorial, with outputs |
+| `data/` | The two TMDB CSVs |
+| `models/tmdb_rating_model.skops` | The trained model; section 14 shows how to load it safely |
+| `pyproject.toml`, `uv.lock` | Dependencies, pinned |
+
+## Data and licence
+
+The data is the [TMDB 5000 Movie Dataset](https://www.kaggle.com/datasets/tmdb/tmdb-movie-metadata) (Kaggle, version 2), built from The Movie Database API. Its use is governed by [TMDB's terms](https://www.themoviedb.org/api-terms-of-use).
+
+<a href="https://www.themoviedb.org/"><img src="https://www.themoviedb.org/assets/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB logo" width="120"></a>
+
+*This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.*
+
+The code is MIT-licensed; see [LICENSE](LICENSE).
+
+## References
+
+- Kapoor, S. & Narayanan, A. (2023). *Leakage and the reproducibility crisis in machine-learning-based science.* Patterns 4(9).
+- Breiman, L., Friedman, J., Olshen, R. & Stone, C. (1984). *Classification and Regression Trees.* (the one-standard-error rule)
+- Hastie, T., Tibshirani, R. & Friedman, J. (2009). *The Elements of Statistical Learning*, 2nd ed., §7.10.
+
+The notebook lists the full set.
